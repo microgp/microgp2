@@ -4,15 +4,15 @@
 *   ######      *  Politecnico di Torino - Dip. Automatica e Informatica     *
 *   ###   \     *  Cso Duca degli Abruzzi 24 / I-10129 TORINO / ITALY        *
 *    ##G  c\    *                                                            *
-*    #     _\   *  Tel: +39-011564.7186  /  Fax: +39-011564.7099             *
+*    #     _\   *  Tel: +39-011564.7092  /  Fax: +39-011564.7099             *
 *    |   _/     *  email: giovanni.squillero@polito.it                       *
 *    |  _/      *  www  : http://www.cad.polito.it/staff/squillero/          *
 *               *                                                            *
 ******************************************************************************
 *
 *   $Source: /home/squiller/tools/uGP/RCS/Memory.h,v $
-* $Revision: 1.6 $
-*     $Date: 2003/12/02 07:43:29 $
+* $Revision: 1.7 $
+*     $Date: 2004/03/12 16:19:03 $
 *
 ******************************************************************************
 *                                                                            *

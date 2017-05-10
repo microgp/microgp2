@@ -10,9 +10,9 @@
 *               *                                                            *
 ******************************************************************************
 *
-*   $Source: /home/squiller/tools/uGP/RCS/Hash.h,v $
-* $Revision: 1.6 $
-*     $Date: 2003/12/02 07:43:29 $
+*   $Source: /home/squiller/tools/uGP/RCS/Queue.h,v $
+* $Revision: 1.1 $
+*     $Date: 2004/03/29 16:17:11 $
 *
 ******************************************************************************
 *                                                                            *
@@ -30,18 +30,10 @@
 *                                                                            *
 \****************************************************************************/
 
-typedef void   *HASH_TABLE;
+typedef void   *QUEUE;
 
-enum {
-    HASH_KEY_NOCASE = 0, HASH_KEY_CASE = 1
-};
-
-int             hCheckKey(HASH_TABLE H, const unsigned char *key);
-HASH_TABLE      hInitHash(int size, int casesensitive);
-void            hFreeHash(HASH_TABLE H);
-int             hPut(HASH_TABLE H, const unsigned char *key, void *data);
-void           *hGet(HASH_TABLE H, const unsigned char *key);
-long int        hHashFunctionInt(long int key, long int link);
-long int        hHashFunctionInt2(long int key);
-long int        hHashFunctionPointer(void *key, long int link);
-long int        hHashFunctionMem(void *mem, size_t len, long int link);
+QUEUE           qInitQueue(void);
+void            qFreeQueue(QUEUE S);
+int             qQueueEmpty(QUEUE S);
+int             qEnqueueElement(QUEUE S, void *element);
+void           *qDequeueElement(QUEUE S);

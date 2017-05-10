@@ -4,7 +4,7 @@
 #   ######      #  Politecnico di Torino - Dip. Automatica e Informatica     #
 #   ###   \     #  Cso Duca degli Abruzzi 24 / I-10129 TORINO / ITALY        #
 #    ##G  c\    #                                                            #
-#    #     _\   #  Tel: +39-011564.7186  /  Fax: +39-011564.7099             #
+#    #     _\   #  Tel: +39-011564.7092  /  Fax: +39-011564.7099             #
 #    |   _/     #  email: giovanni.squillero@polito.it                       #
 #    |  _/      #  www  : http://www.cad.polito.it/home/squillero/           #
 #               #                                                            #
@@ -16,7 +16,7 @@
 #
 ##############################################################################
 #                                                                            #
-#  Copyright (c) 2002-2006 Giovanni Squillero                                #
+#  Copyright (c) 2002-2003 Giovanni Squillero                                #
 #                                                                            #
 #  This  program  is   free  software;   you can  redistribute   it  and/or  #
 #  modify  it under   the terms  of  the  GNU General   Public License   as  #
@@ -31,15 +31,13 @@
 ##############################################################################
 
 # This is the name of your project
-TARGET = ugp
-TARGET_PURE = $(TARGET)-pure
-VERSION=2.7.0-beta
+MAIN_TARGET = ugp
+MAIN_TARGET_PURE = $(MAIN_TARGET)-pure
 
-TARGET_OBJECTS = Memory.o Heapsort.o Messages.o String.o Hash.o Stack.o InstructionLibrary.o Graph.o Fitness.o Genetic.o Operators.o Main.o getenv.o setenv.o getopt.c getopt1.c
-#TARGET_OBJECTS = Memory.o Heapsort.o Messages.o String.o Hash.o Stack.o InstructionLibrary.o Graph.o Fitness.o Genetic.o Operators.o Main.o 
-TARGET_HEADERS = ugp.h gmacros.h Check.h Memory.h Heapsort.h Messages.h String.h Hash.h Stack.h InstructionLibrary.h Graph.h Fitness.h Genetic.h Operators.h
-TARGET_FILES = $(TARGET_OBJECTS:.o=.c) $(TARGET_HEADERS)
-DISTRIBUITION_FILES = $(TARGET_FILES) ugp.c Makefile GPL.txt
+OBJECTS = GPL.o Memory.o Heapsort.o Messages.o String.o Hash.o Stack.o Queue.o InstructionLibrary.o Graph.o Fitness.o Entropy.o Genetic.o Operators.o getenv.o setenv.o getopt.o getopt1.o
+HEADERS = GPL.h ugp.h gmacros.h Check.h Memory.h Heapsort.h Messages.h String.h Hash.h Stack.h Queue.h InstructionLibrary.h Graph.h Fitness.h Entropy.h Genetic.h Operators.h
+FILES = $(OBJECTS:.o=.c) $(HEADERS) ugp.c ugp-dump.c
+DISTRIBUITION_FILES = $(FILES) Makefile GetVersion.pl GPL.txt
 
 # Uncomment to use dmalloc
 #LIBS = -lm -ldmalloc
@@ -91,11 +89,11 @@ INCLUDEPATH = -I.
 # Options
 # Uncomment to use dmalloc
 #STANDARD = -DDMALLOC -DDMALLOC_FUNC_CHECK -ansi -Wall $(INCLUDEPATH) -DNEED_SOME_PROTOS -DLINUX
-STANDARD = -ansi -Wall $(INCLUDEPATH) -DNEED_SOME_PROTOS -DLINUX
+STANDARD = -ansi -Wall $(INCLUDEPATH) -DNEED_SOME_PROTOS -DLINUX -g
 #STANDARD = -ansi -Wall $(INCLUDEPATH) -DNEED_SOME_PROTOS
-OPTIMIZE = -O99 -g
+OPTIMIZE = -O99
 PROFILE = $(OPTIMIZE) -pg
-DEBUG = -O -DGS_DEBUG -g
+DEBUG = -O -DGS_DEBUG
 
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
@@ -106,11 +104,13 @@ DEBUG = -O -DGS_DEBUG -g
 #CFLAGS = $(STANDARD) $(DEBUG)
 #CFLAGS = $(STANDARD) $(PROFILE)
 CFLAGS = $(STANDARD) $(OPTIMIZE)
+#CFLAGS = $(STANDARD)
 
 # -----------------------------------------------------------------------------
 
-default: $(TARGET)-exp
-all: TAGS $(TARGET) $(TARGET_PURE)
+default: $(MAIN_TARGET)
+#default: $(MAIN_TARGET)-exp
+all: TAGS $(MAIN_TARGET) $(MAIN_TARGET_PURE)
 new: default
 
 # -----------------------------------------------------------------------------
@@ -134,62 +134,71 @@ new: default
 
 # -----------------------------------------------------------------------------
 
-$(TARGET): $(TARGET_OBJECTS)
+$(MAIN_TARGET): $(OBJECTS) ugp.c
 	$(CC) $(LIBPATH) $(CFLAGS) -o $@ \
-	-DUGP_FLAGS="\"${CFLAGS}\"" -DUGP_LINKED_BY="\"${USER}\"" -DUGP_LINKED_MACHINE="\"${HOST}\"" ugp.c \
+	-DUGP_FLAGS="\"${CFLAGS}\"" -DUGP_LINKED_BY="\"${USER}\"" -DUGP_LINKED_MACHINE="\"${HOST}\"" \
 	$^ $(LIBS)
 
-$(TARGET)-exp: $(TARGET_OBJECTS:.o=.c)
+$(MAIN_TARGET)-exp: $(OBJECTS:.o=.c) ugp.c
 	$(CC) -o $@ \
 	$(LIBPATH) $(STANDARD) $(DEBUG) -fprofile-arcs -ftest-coverage \
 	-DUGP_FLAGS="\"$(STANDARD) $(DEBUG) -fprofile-arcs -ftest-coverage\"" \
 	-DUGP_LINKED_BY="\"${USER}\"" \
 	-DUGP_LINKED_MACHINE="\"${HOST}\"" \
-	ugp.c $^ \
+	$^ \
 	$(LIBS)
 
-$(TARGET)-pure: $(TARGET_OBJECTS)
+$(MAIN_TARGET)-pure: $(OBJECTS) ugp.c
 	purify $(CC) $(LIBPATH) $(CFLAGS) -o $@ \
-	-DUGP_FLAGS="\"${CFLAGS}\"" -DUGP_LINKED_BY="\"${USER}\"" -DUGP_LINKED_MACHINE="\"${HOST}\"" ugp.c \
+	-DUGP_FLAGS="\"${CFLAGS}\"" -DUGP_LINKED_BY="\"${USER}\"" -DUGP_LINKED_MACHINE="\"${HOST}\"" \
 	$^ $(LIBS)
 
-$(TARGET)-insure: $(TARGET_OBJECTS:.o=-ins++.o)
+$(MAIN_TARGET)-insure: $(OBJECTS:.o=-ins++.o) ugp.c 
 	insure $(STANDARD) $(LIBPATH) -g -o $@ \
-	-DUGP_FLAGS="\"${CFLAGS}\"" -DUGP_LINKED_BY="\"${USER}\"" -DUGP_LINKED_MACHINE="\"${HOST}\"" ugp.c \
+	-DUGP_FLAGS="\"${CFLAGS}\"" -DUGP_LINKED_BY="\"${USER}\"" -DUGP_LINKED_MACHINE="\"${HOST}\"" \
 	$^ $(LIBS)
 
-test-dmalloc: test-dmalloc.o
+test-dmalloc: test-dmalloc.o ugp.c
 	$(CC) $(LIBPATH) $(CFLAGS) -o $@ \
-	-DUGP_FLAGS="\"${CFLAGS}\"" -DUGP_LINKED_BY="\"${USER}\"" -DUGP_LINKED_MACHINE="\"${HOST}\"" ugp.c \
+	-DUGP_FLAGS="\"${CFLAGS}\"" -DUGP_LINKED_BY="\"${USER}\"" -DUGP_LINKED_MACHINE="\"${HOST}\"" \
 	$^ $(LIBS)	
 
-TAGS: $(TARGET_FILES)
+ugp-dump: $(OBJECTS) ugp-dump.c
+	$(CC) $(LIBPATH) $(CFLAGS) -o $@ \
+	-DUGP_FLAGS="\"${CFLAGS}\"" -DUGP_LINKED_BY="\"${USER}\"" -DUGP_LINKED_MACHINE="\"${HOST}\"" \
+	$^ $(LIBS)
+
+TAGS: $(FILES)
 	etags $^
 
-install: ugp
+install: ugp ugp-dump
 	$(INSTALL) -m 775 ugp /cadtools/program/bin
+	$(INSTALL) -m 775 ugp-dump /cadtools/program/bin
 
 dist:
-	-rm -Rf ugp-$(VERSION)
-	mkdir ugp-$(VERSION)
-	ln $(DISTRIBUITION_FILES) ugp-$(VERSION)
-	chown -R squiller:cadcad ugp-$(VERSION)
-	chmod 644 ugp-$(VERSION)/*
-	chmod 444 ugp-$(VERSION)/GPL.txt
-	tar cvfz ugp-$(VERSION).tar.gz ugp-$(VERSION)
-	chown -R squiller:cadcad ugp-$(VERSION).tar.gz
-	-rm -Rf ugp-$(VERSION)
+	-rm -Rf ugp-`./GetVersion.pl`
+	mkdir ugp-`./GetVersion.pl`
+	ln $(DISTRIBUITION_FILES) ugp-`./GetVersion.pl`
+	chown -R squiller:cadcad ugp-`./GetVersion.pl`
+	chmod 644 ugp-`./GetVersion.pl`/Makefile
+	chmod 644 ugp-`./GetVersion.pl`/*.[ch]
+	chmod 755 ugp-`./GetVersion.pl`/GetVersion.pl
+	chmod 444 ugp-`./GetVersion.pl`/GPL.txt
+	tar cvfz ugp-`./GetVersion.pl`.tar.gz ugp-`./GetVersion.pl`
+	chown -R squiller:cadcad ugp-`./GetVersion.pl`.tar.gz
+	-rm -Rf ugp-`./GetVersion.pl`
 
 # -----------------------------------------------------------------------------
 # DEPENDENCIES
 # -----------------------------------------------------------------------------
-Fitness.o: $(TARGET_HEADERS) ugp.c
-Graph.o: $(TARGET_HEADERS) ugp.c
-Genetic.o: $(TARGET_HEADERS) ugp.c
-Operators.o: $(TARGET_HEADERS) ugp.c
-Hash.o: $(TARGET_HEADERS) ugp.c
-Stack.o: $(TARGET_HEADERS) ugp.c
-InstructionLibrary.o: $(TARGET_HEADERS) ugp.c
-Main.o: $(TARGET_HEADERS) ugp.c
-Memory.o: $(TARGET_HEADERS) ugp.c
-Messages.o: $(TARGET_HEADERS) ugp.c
+Entropy.o: Makefile $(HEADERS) 
+Fitness.o: Makefile $(HEADERS) 
+Genetic.o: Makefile $(HEADERS) 
+Graph.o: Makefile $(HEADERS) 
+Hash.o: Makefile $(HEADERS) 
+InstructionLibrary.o: Makefile $(HEADERS) 
+Memory.o: Makefile $(HEADERS) 
+Messages.o: Makefile $(HEADERS) 
+Operators.o: Makefile $(HEADERS) 
+Queue.o: Makefile $(HEADERS) 
+Stack.o: Makefile $(HEADERS) 

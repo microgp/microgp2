@@ -4,7 +4,7 @@
 *   ######      *  Politecnico di Torino - Dip. Automatica e Informatica     *
 *   ###   \     *  Cso Duca degli Abruzzi 24 / I-10129 TORINO / ITALY        *
 *    ##G  c\    *                                                            *
-*    #     _\   *  Tel: +39-011564.7186  /  Fax: +39-011564.7099             *
+*    #     _\   *  Tel: +39-011564.7092  /  Fax: +39-011564.7099             *
 *    |   _/     *  email: giovanni.squillero@polito.it                       *
 *    |  _/      *  www  : http://www.cad.polito.it/staff/squillero/          *
 *               *                                                            *
@@ -16,7 +16,7 @@
 *
 ******************************************************************************
 *                                                                            *
-*  Copyright (c) 2002-2006 Giovanni Squillero                                *
+*  Copyright (c) 2002-2003 Giovanni Squillero                                *
 *                                                                            *
 *  This  program  is   free  software;   you can  redistribute   it  and/or  *
 *  modify  it under   the terms  of  the  GNU General   Public License   as  *
@@ -32,12 +32,13 @@
 
 typedef union {
     long            Integer;
-    char           *Constant;
+    char           *String;
     struct _GR_NODE *Node;
 } GR_PARAMETER_VALUE;
 
 typedef struct _GR_NODE {
     long            id;
+    long int        HashID;
     int             ReferenceCount;
     IL_MACRO       *Macro;
     struct _GR_NODE *Succ;
@@ -58,6 +59,7 @@ typedef struct _GR_SUBGRAPH {
 } GR_SUBGRAPH;
 
 typedef struct _GR_GRAPH {
+    long int        HashID;
     int             nSubgraphs;
     GR_SUBGRAPH   **Subgraph;
 } GR_GRAPH;
@@ -70,6 +72,8 @@ typedef struct _GR_SLICE {
 #define DUMP_OP_VERBOSE 	0x0001
 #define DUMP_OP_TRANSLATE 	0x0002
 
+GR_GRAPH       *grGetNewGraph(void);
+void            grDisplayGraphStat(void);
 char           *grDebugNodeId(GR_NODE * N);
 char           *grDebugSubgraphId(GR_SUBGRAPH * T);
 GR_GRAPH       *grDuplicateGraph(GR_GRAPH * SrcF);
@@ -94,11 +98,18 @@ GR_NODE        *grGetRandomSuccessor(GR_NODE * N);
 GR_NODE        *grGetRandomAncestor(GR_NODE * N);
 GR_NODE        *grGetRandomSibling(GR_NODE * N);
 
+int             grShrinkSlice(GR_SLICE * S, int size);
+int             grSliceSize(GR_SLICE * S);
 int             grValidateSlice(GR_SLICE * S);
+int             grValidateSliceLight(GR_SLICE * S);
 GR_SUBGRAPH    *grGetRandomCompatibleSubgraph(GR_GRAPH * G, GR_SUBGRAPH * T);
 GR_NODE        *grSeekHead(GR_NODE * N);
 void            grSwapNodes(GR_NODE * N1, GR_NODE * N2);
+int             grSwapNodesSafe(GR_NODE * N1, GR_NODE * N2);
 void            grFixGraph(GR_GRAPH * G);
 GR_NODE        *grCreateNode(GR_NODE * Prev);
 int             grAssignNode(GR_NODE * Node, IL_MACRO * Macro);
 int             grRandomizeNodeParameter(GR_NODE * Node, int op);
+int             grCmpGraph(GR_GRAPH * G1, GR_GRAPH * G2);
+long int        grCalculateHashID(GR_GRAPH * G);
+int             grNodeDepth(GR_NODE * N);

@@ -10,9 +10,9 @@
 *               *                                                            *
 ******************************************************************************
 *
-*   $Source: /home/squiller/tools/uGP/RCS/Hash.h,v $
-* $Revision: 1.6 $
-*     $Date: 2003/12/02 07:43:29 $
+*   $Source: /home/squiller/tools/uGP/RCS/GPL.c,v $
+* $Revision: 1.1 $
+*     $Date: 2004/03/29 16:17:11 $
 *
 ******************************************************************************
 *                                                                            *
@@ -30,18 +30,39 @@
 *                                                                            *
 \****************************************************************************/
 
-typedef void   *HASH_TABLE;
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <limits.h>
+#include <float.h>
+#include <memory.h>
+#include <stdarg.h>
+#include <stddef.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/time.h>
+#ifdef LINUX
+#include "gmacros.h"
+#else
+#include <macros.h>
+#endif
 
-enum {
-    HASH_KEY_NOCASE = 0, HASH_KEY_CASE = 1
-};
+void            GPL(FILE * fout)
+{
+    fprintf(fout,
+	    "This program is free software; you can redistribute it and/or modify it under\n"
+	    "the terms of the GNU General Public License as published by the Free Software\n"
+	    "Foundation; either version 2 of the License, or (at your option) any later\n"
+	    "version.\n"
+	    "\n"
+	    "This program is distributed in the hope that it will be useful, but WITHOUT \n"
+	    "ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS \n"
+	    "FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.\n"
+	    "\n"
+	    "You should have received a copy of the GNU General Public License along with \n"
+	    "this program; if not, write to the Free Software Foundation, Inc., \n"
+	    "59 Temple Place, Suite 330, Boston, MA 02111-1307 USA\n" "\n");
+}
 
-int             hCheckKey(HASH_TABLE H, const unsigned char *key);
-HASH_TABLE      hInitHash(int size, int casesensitive);
-void            hFreeHash(HASH_TABLE H);
-int             hPut(HASH_TABLE H, const unsigned char *key, void *data);
-void           *hGet(HASH_TABLE H, const unsigned char *key);
-long int        hHashFunctionInt(long int key, long int link);
-long int        hHashFunctionInt2(long int key);
-long int        hHashFunctionPointer(void *key, long int link);
-long int        hHashFunctionMem(void *mem, size_t len, long int link);

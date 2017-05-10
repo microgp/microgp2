@@ -4,7 +4,7 @@
 *   ######      *  Politecnico di Torino - Dip. Automatica e Informatica     *
 *   ###   \     *  Cso Duca degli Abruzzi 24 / I-10129 TORINO / ITALY        *
 *    ##G  c\    *                                                            *
-*    #     _\   *  Tel: +39-011564.7186  /  Fax: +39-011564.7099             *
+*    #     _\   *  Tel: +39-011564.7092  /  Fax: +39-011564.7099             *
 *    |   _/     *  email: giovanni.squillero@polito.it                       *
 *    |  _/      *  www  : http://www.cad.polito.it/staff/squillero/          *
 *               *                                                            *
@@ -16,7 +16,7 @@
 *
 ******************************************************************************
 *                                                                            *
-*  Copyright (c) 2002-2006 Giovanni Squillero                                *
+*  Copyright (c) 2002-2003 Giovanni Squillero                                *
 *                                                                            *
 *  This  program  is   free  software;   you can  redistribute   it  and/or  *
 *  modify  it under   the terms  of  the  GNU General   Public License   as  *
@@ -60,49 +60,6 @@
 #include "Fitness.h"
 #include "ugp.h"
 
-/****************************************************************************/
-/*              L O C A L   D A T A   S T R U C T U R E S                   */
-/****************************************************************************/
-
-#define DEFAULT_COMMENT_FORMAT  	"; %s\n"
-#define DEFAULT_LABEL_FORMAT    	"%s:\n"
-
-#define TSTRING_SECTION 		".section"
-#define TSTRING_TYPE 			".type"
-#define TSTRING_MACRO 			".macro"
-#define TSTRING_ENDMACRO 		".endmacro"
-#define TSTRING_PROLOGUE 		".prologue"
-#define TSTRING_ENDPROLOGUE 		".endprologue"
-#define TSTRING_GLOBALPROLOGUE 		".globalprologue"
-#define TSTRING_ENDGLOBALPROLOGUE 	".endglobalprologue"
-#define TSTRING_EPILOGUE 		".epilogue"
-#define TSTRING_ENDEPILOGUE 		".endepilogue"
-#define TSTRING_GLOBALEPILOGUE 		".globalepilogue"
-#define TSTRING_ENDGLOBALEPILOGUE 	".endglobalepilogue"
-#define TSTRING_PROBABILITY		".probability"
-#define TSTRING_PARAMETER 		".parameter"
-#define TSTRING_LABELFORMAT		".labelformat"
-#define TSTRING_COMMENTFORMAT		".commentformat"
-#define TSTRING_ALLOWMULTIPLE		".allowmultiple"
-#define TSTRING_ALWAYSDUMP		".alwaysdump"
-enum {
-    TOKEN_ILLEGAL = -1,
-    TOKEN_DATA = 0,
-    TOKEN_TYPE,
-    TOKEN_SECTION,
-    TOKEN_MACRO, TOKEN_ENDMACRO,
-    TOKEN_PROLOGUE, TOKEN_ENDPROLOGUE,
-    TOKEN_GLOBALPROLOGUE, TOKEN_ENDGLOBALPROLOGUE,
-    TOKEN_EPILOGUE, TOKEN_ENDEPILOGUE,
-    TOKEN_GLOBALEPILOGUE, TOKEN_ENDGLOBALEPILOGUE,
-    TOKEN_PROBABILITY,
-    TOKEN_PARAMETER,
-    TOKEN_LABELFORMAT,
-    TOKEN_COMMENTFORMAT,
-    TOKEN_ALLOWMULTIPLE,
-    TOKEN_ALWAYSDUMP
-};
-
 /*
  * INTERNAL PROTOS
  */
@@ -129,6 +86,7 @@ static IL_MACRO EmptyPrologue = {
     -1,				/* int id */
     0,				/* int Probability */
     NULL,			/* char *LabelFormat */
+    NULL,			/* char *RegExp */
     NULL,			/* char *Text */
     0,				/* int  nParameters */
     NULL,			/* IL_PARAMETER **Parameter */
@@ -138,6 +96,7 @@ static IL_MACRO EmptyEpilogue = {
     -2,				/* int id */
     0,				/* int Probability */
     NULL,			/* char *LabelFormat */
+    NULL,			/* char *RegExp */
     NULL,			/* char *Text */
     0,				/* int  nParameters */
     NULL,			/* IL_PARAMETER **Parameter */
@@ -157,7 +116,7 @@ static char    *iilReadNextLine(FILE * Fin)
     do {	
 	l = fgets(line, MAX_LINE, Fin);
 	if(l) {
-	    for(p=strlen(l)-1; p>=0 && (isspace(line[p]) || line[p]=='\n'); --p)
+	    for(p=strlen(l)-1; p>=0 && (isspace((int)line[p]) || line[p]=='\n'); --p)
 		line[p] = '\n', line[p+1] = '\0';
 	}
     } while (l && ((line[0] == ';' && line[1] == '-') || line[0] == '\n'));
@@ -206,6 +165,8 @@ static int      iilTokenize(const char *line)
 	return TOKEN_PARAMETER;
     else if (!strncasecmp(line, TSTRING_LABELFORMAT, strlen(TSTRING_LABELFORMAT)))
 	return TOKEN_LABELFORMAT;
+    else if (!strncasecmp(line, TSTRING_REGEXP, strlen(TSTRING_REGEXP)))
+	return TOKEN_REGEXP;
     else if (!strncasecmp(line, TSTRING_COMMENTFORMAT, strlen(TSTRING_COMMENTFORMAT)))
 	return TOKEN_COMMENTFORMAT;
     else if (!strncasecmp(line, TSTRING_ALLOWMULTIPLE, strlen(TSTRING_ALLOWMULTIPLE)))
@@ -244,6 +205,11 @@ static IL_MACRO *iilReadMacro(FILE * Fin)
 	    ilMacro->LabelFormat = CheckStrdup(tmp);
 	    msgMessage(MSG_DEBUG, "iilReadMacro::Debug: macro LabelFormat set to: \"%s\"",
 		       ilMacro->LabelFormat);
+	    break;
+	case TOKEN_REGEXP:
+	    ilMacro->RegExp = CheckStrdup(&l[strlen(TSTRING_REGEXP)+1]);
+	    msgMessage(MSG_DEBUG, "iilReadMacro::Debug: macro regexp set to: \"%s\"",
+		       ilMacro->RegExp);
 	    break;
 	case TOKEN_DATA:
 	    strcat(Text, l);
@@ -431,8 +397,8 @@ IL_LIBRARY     *ilReadInstructionLibrary(char *FileName)
     /*
      * Init parser tokens
      */
-    ilSystem = hInitHash(64, HASH_KEY_NOCASE);
-    ilUser = hInitHash(64, HASH_KEY_NOCASE);
+    ilSystem = hInitHash(71, HASH_KEY_NOCASE);
+    ilUser = hInitHash(277, HASH_KEY_NOCASE);
     ilParameterList = sInitStack();
     hPut(ilSystem, "HEX", (void *)PARAMETER_HEX);
     hPut(ilSystem, "INTEGER", (void *)PARAMETER_INTEGER);

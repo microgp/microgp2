@@ -10,9 +10,9 @@
 *               *                                                            *
 ******************************************************************************
 *
-*   $Source: /home/squiller/tools/uGP/RCS/Stack.c,v $
-* $Revision: 1.6 $
-*     $Date: 2003/12/02 07:43:29 $
+*   $Source: /home/squiller/tools/uGP/RCS/Queue.c,v $
+* $Revision: 1.1 $
+*     $Date: 2004/03/29 16:17:11 $
 *
 ******************************************************************************
 *                                                                            *
@@ -51,7 +51,7 @@
 #include "Check.h"
 #include "Memory.h"
 #include "Messages.h"
-#include "Stack.h"
+#include "Queue.h"
 #include "String.h"
 #include "InstructionLibrary.h"
 #include "Graph.h"
@@ -59,19 +59,25 @@
 #include "Fitness.h"
 #include "ugp.h"
 
-/*
- * INTERNAL PROTOS
- */
-
 /****************************************************************************/
 /*              L O C A L   D A T A   S T R U C T U R E S                   */
 /****************************************************************************/
 
-typedef struct _I_STACK {
-    int             Size;
-    int             AllocatedSpace;
-    void          **Table;
-} I_STACK;
+typedef struct _I_QUEUE_ELEM {
+    void           *Data;
+    struct _I_QUEUE_ELEM *Next;
+    struct _I_QUEUE_ELEM *Prev;
+} I_QUEUE_ELEM;
+
+typedef struct _I_QUEUE {
+    I_QUEUE_ELEM   *First;
+    I_QUEUE_ELEM   *Last;
+} I_QUEUE;
+
+/*
+ * INTERNAL PROTOS
+ */
+void            iqRemoveElement(I_QUEUE * IL, I_QUEUE_ELEM * E);
 
 /****************************************************************************/
 /*                          V A R I A B L E S                               */
@@ -81,58 +87,76 @@ typedef struct _I_STACK {
 /*                I N T E R N A L     F U N C T I O N S                     */
 /****************************************************************************/
 
-STACK          *sInitStack(void)
+QUEUE           qInitQueue(void)
 {
-    I_STACK        *S;
+    I_QUEUE        *IL;
 
-    S = CheckCalloc(1, sizeof(I_STACK));
-    return (STACK *) S;
+    IL = CheckCalloc(1, sizeof(I_QUEUE));
+    return (QUEUE) IL;
 }
 
-int             sStackEmpty(STACK * S)
+int             qQueueEmpty(QUEUE S)
 {
-    I_STACK        *IS;
+    I_QUEUE        *IL;
 
-    IS = (I_STACK *) S;
-    return !IS->Size;
+    IL = (I_QUEUE *) S;
+    return !IL->First;
 }
 
-int             sPushElement(STACK * S, void *element, int unique)
+int             qEnqueueElement(QUEUE S, void *element)
 {
-    int             t;
-    I_STACK        *IS;
+    I_QUEUE        *IL;
+    I_QUEUE_ELEM   *E;
 
-    IS = (I_STACK *) S;
-    if (unique) {
-	for (t = 0; t < IS->Size; ++t)
-	    if (IS->Table[t] == element)
-		return 0;
-    }
-    if (IS->Size == IS->AllocatedSpace) {
-	IS->Table = CheckRealloc(IS->Table, (IS->AllocatedSpace + 1) * sizeof(void *));
+    IL = (I_QUEUE *) S;
+    E = CheckMalloc(sizeof(I_QUEUE_ELEM));
+    E->Data = element;
+    E->Prev = NULL;
+    if (IL->First)
+	IL->First->Prev = E;
+    else
+	IL->Last = E;
+    E->Next = IL->First;
+    IL->First = E;
 
-	++IS->AllocatedSpace;
-    }
-    IS->Table[IS->Size] = element;
-    ++IS->Size;
     return 1;
 }
 
-void           *sPopElement(STACK * S)
+void           *qDequeueElement(QUEUE S)
 {
-    char           *_FunctionName = "sPopElement";
-    I_STACK        *IS;
+    I_QUEUE        *IL;
+    void           *element;
 
-    IS = (I_STACK *) S;
-    CheckTrue(IS->Size > 0);
-    return IS->Table[--IS->Size];
+    IL = (I_QUEUE *) S;
+    element = IL->Last->Data;
+    iqRemoveElement(IL, IL->Last);
+
+    return element;
 }
 
-void            sFreeStack(STACK * S)
+void            qFreeQueue(QUEUE S)
 {
-    I_STACK        *IS;
+    I_QUEUE        *IL;
 
-    IS = (I_STACK *) S;
-    CheckFree(IS->Table);
-    CheckFree(IS);
+    IL = (I_QUEUE *) S;
+    while (IL->First)
+	iqRemoveElement(IL, IL->First);
+    CheckFree(IL);
+}
+
+void            iqRemoveElement(I_QUEUE * IL, I_QUEUE_ELEM * E)
+{
+    I_QUEUE_ELEM   *P = E->Prev;
+    I_QUEUE_ELEM   *N = E->Next;
+
+    CheckFree(E);
+    if (P)
+	P->Next = N;
+    else
+	IL->First = N;
+
+    if (N)
+	N->Prev = P;
+    else
+	IL->Last = P;
 }

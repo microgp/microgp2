@@ -1,3 +1,4 @@
+
 /********************************************************************-*-c-*-*\
 *               *                                                            *
 *    #####      *  Giovanni Squillero, Ph.D.                                 *
@@ -10,9 +11,9 @@
 *               *                                                            *
 ******************************************************************************
 *
-*   $Source: /home/squiller/tools/uGP/RCS/Stack.c,v $
-* $Revision: 1.6 $
-*     $Date: 2003/12/02 07:43:29 $
+*   $Source: /home/squiller/tools/uGP/RCS/Entropy.c,v $
+* $Revision: 1.1 $
+*     $Date: 2004/03/29 16:17:11 $
 *
 ******************************************************************************
 *                                                                            *
@@ -32,6 +33,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include <ctype.h>
 #include <limits.h>
 #include <memory.h>
@@ -51,7 +53,8 @@
 #include "Check.h"
 #include "Memory.h"
 #include "Messages.h"
-#include "Stack.h"
+#include "Queue.h"
+#include "Hash.h"
 #include "String.h"
 #include "InstructionLibrary.h"
 #include "Graph.h"
@@ -62,77 +65,100 @@
 /*
  * INTERNAL PROTOS
  */
-
-/****************************************************************************/
-/*              L O C A L   D A T A   S T R U C T U R E S                   */
-/****************************************************************************/
-
-typedef struct _I_STACK {
-    int             Size;
-    int             AllocatedSpace;
-    void          **Table;
-} I_STACK;
+static void     ienAddSymbol(long int symbol);
+static void     ienFreeSymbolTable(void);
 
 /****************************************************************************/
 /*                          V A R I A B L E S                               */
 /****************************************************************************/
 
+#define SYMBOL_HASH_SIZE 7237
+
+typedef struct _SYMBOL_ELEM {
+    long int        Symbol;
+    int             Count;
+    struct _SYMBOL_ELEM *Next;
+} SYMBOL_ELEM;
+
+static SYMBOL_ELEM *SymbolMap[SYMBOL_HASH_SIZE];
+static long int numSymbols;
+static long int numUniqueSymbols;
+
 /****************************************************************************/
 /*                I N T E R N A L     F U N C T I O N S                     */
 /****************************************************************************/
 
-STACK          *sInitStack(void)
-{
-    I_STACK        *S;
-
-    S = CheckCalloc(1, sizeof(I_STACK));
-    return (STACK *) S;
-}
-
-int             sStackEmpty(STACK * S)
-{
-    I_STACK        *IS;
-
-    IS = (I_STACK *) S;
-    return !IS->Size;
-}
-
-int             sPushElement(STACK * S, void *element, int unique)
+static void     ienFreeSymbolTable(void)
 {
     int             t;
-    I_STACK        *IS;
+    SYMBOL_ELEM    *T;
 
-    IS = (I_STACK *) S;
-    if (unique) {
-	for (t = 0; t < IS->Size; ++t)
-	    if (IS->Table[t] == element)
-		return 0;
+    numSymbols = numUniqueSymbols = 0;
+    for (t = 0; t < SYMBOL_HASH_SIZE; ++t) {
+	while (SymbolMap[t]) {
+	    T = SymbolMap[t]->Next;
+	    CheckFree(SymbolMap[t]);
+	    SymbolMap[t] = T;
+	}
     }
-    if (IS->Size == IS->AllocatedSpace) {
-	IS->Table = CheckRealloc(IS->Table, (IS->AllocatedSpace + 1) * sizeof(void *));
-
-	++IS->AllocatedSpace;
-    }
-    IS->Table[IS->Size] = element;
-    ++IS->Size;
-    return 1;
 }
 
-void           *sPopElement(STACK * S)
+static void     ienAddSymbol(long int symbol)
 {
-    char           *_FunctionName = "sPopElement";
-    I_STACK        *IS;
+    int             h;
+    SYMBOL_ELEM    *S;
 
-    IS = (I_STACK *) S;
-    CheckTrue(IS->Size > 0);
-    return IS->Table[--IS->Size];
+    ++numSymbols;
+    h = hHashFunctionInt2(symbol) % SYMBOL_HASH_SIZE;
+    S = SymbolMap[h];
+    while (S && S->Symbol != symbol)
+	S = S->Next;
+
+    if (S) {
+	++S->Count;
+    } else {
+	S = CheckMalloc(sizeof(SYMBOL_ELEM));
+	S->Symbol = symbol;
+	S->Count = 1;
+	S->Next = SymbolMap[h];
+	SymbolMap[h] = S;
+	++numUniqueSymbols;
+    }
 }
 
-void            sFreeStack(STACK * S)
-{
-    I_STACK        *IS;
+/****************************************************************************/
+/*                          F U N C T I O N S                               */
+/****************************************************************************/
 
-    IS = (I_STACK *) S;
-    CheckFree(IS->Table);
-    CheckFree(IS);
+double          enCalculateEntropy(G_GENETIC * GEN)
+{
+    char           *_FunctionName = "enCalculateEntropy";
+    double          entropy;
+    int             i;
+    GR_NODE        *N;
+    GR_GRAPH       *G;
+    int             s;
+    SYMBOL_ELEM    *S;
+    double          p;
+
+    ienFreeSymbolTable();
+    for (i = 0; i < GEN->Mu; ++i) {
+	G = GEN->Population.Individual[i].Graph;
+	for (s = 0; s < G->nSubgraphs; ++s) {
+	    for (N = G->Subgraph[s]->Head; N; N = N->Succ) {
+		CheckTrue(N->HashID);
+		ienAddSymbol(N->HashID);
+	    }
+	}
+    }
+
+    entropy = 0.0l;
+    for (s = 0; s < SYMBOL_HASH_SIZE; ++s) {
+	for (S = SymbolMap[s]; S; S = S->Next) {
+	    p = 1.0 * S->Count / numSymbols;
+	    entropy += p * log(p);
+	}
+    }
+
+    return -entropy;
 }

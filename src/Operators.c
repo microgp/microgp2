@@ -4,19 +4,19 @@
 *   ######      *  Politecnico di Torino - Dip. Automatica e Informatica     *
 *   ###   \     *  Cso Duca degli Abruzzi 24 / I-10129 TORINO / ITALY        *
 *    ##G  c\    *                                                            *
-*    #     _\   *  Tel: +39-011564.7186  /  Fax: +39-011564.7099             *
+*    #     _\   *  Tel: +39-011564.7092  /  Fax: +39-011564.7099             *
 *    |   _/     *  email: giovanni.squillero@polito.it                       *
 *    |  _/      *  www  : http://www.cad.polito.it/staff/squillero/          *
 *               *                                                            *
 ******************************************************************************
 *
 *   $Source: /home/squiller/tools/uGP/RCS/Operators.c,v $
-* $Revision: 1.12 $
-*     $Date: 2003/12/02 13:29:16 $
+* $Revision: 1.14 $
+*     $Date: 2004/03/29 16:17:11 $
 *
 ******************************************************************************
 *                                                                            *
-*  Copyright (c) 2002-2006 Giovanni Squillero                                *
+*  Copyright (c) 2002-2003 Giovanni Squillero                                *
 *                                                                            *
 *  This  program  is   free  software;   you can  redistribute   it  and/or  *
 *  modify  it under   the terms  of  the  GNU General   Public License   as  *
@@ -81,7 +81,7 @@ int             opAddMutation(G_GENETIC * GEN)
     int             force;
     int             t;
 
-    parent = gTournament(GEN->Population.Individual, GEN->Mu, 2);
+    parent = gTournament(GEN->Population.Individual, GEN->Mu, GEN->Tau);
     New = gDuplicateIndividual(GEN, &GEN->Population.Individual[parent]);
     gAddAncestor(New, GEN->Population.Individual[parent].id);
     F = New->Graph;
@@ -109,7 +109,7 @@ int             opSubMutation(G_GENETIC * GEN)
     int             force;
     int             t;
 
-    parent = gTournament(GEN->Population.Individual, GEN->Mu, 2);
+    parent = gTournament(GEN->Population.Individual, GEN->Mu, GEN->Tau);
     New = gDuplicateIndividual(GEN, &GEN->Population.Individual[parent]);
     gAddAncestor(New, GEN->Population.Individual[parent].id);
     F = New->Graph;
@@ -147,7 +147,7 @@ int             opModMutation(G_GENETIC * GEN)
     int             force;
     int             t;
 
-    parent = gTournament(GEN->Population.Individual, GEN->Mu, 2);
+    parent = gTournament(GEN->Population.Individual, GEN->Mu, GEN->Tau);
     New = gDuplicateIndividual(GEN, &GEN->Population.Individual[parent]);
     gAddAncestor(New, GEN->Population.Individual[parent].id);
     F = New->Graph;
@@ -180,7 +180,7 @@ int             opMixMutation(G_GENETIC * GEN)
     int             force;
     int             t;
 
-    parent = gTournament(GEN->Population.Individual, GEN->Mu, 2);
+    parent = gTournament(GEN->Population.Individual, GEN->Mu, GEN->Tau);
     New = gDuplicateIndividual(GEN, &GEN->Population.Individual[parent]);
     gAddAncestor(New, GEN->Population.Individual[parent].id);
     F = New->Graph;
@@ -231,7 +231,7 @@ int             opStd2PointXOver(G_GENETIC * GEN)
     int             result = 0;
 
     /* copy parent 1 */
-    parent1 = gTournament(GEN->Population.Individual, GEN->Mu, 2);
+    parent1 = gTournament(GEN->Population.Individual, GEN->Mu, GEN->Tau);
     Ind1 = gDuplicateIndividual(GEN, &GEN->Population.Individual[parent1]);
     if (msgCheckLevel(MSG_DEBUG)) {
 	FILE           *F;
@@ -242,7 +242,7 @@ int             opStd2PointXOver(G_GENETIC * GEN)
 	fclose(F);
     }
     /* copy parent 2 */
-    parent2 = gTournament(GEN->Population.Individual, GEN->Mu, 2);
+    parent2 = gTournament(GEN->Population.Individual, GEN->Mu, GEN->Tau);
     Ind2 = gDuplicateIndividual(GEN, &GEN->Population.Individual[parent2]);
     if (msgCheckLevel(MSG_DEBUG)) {
 	FILE           *F;
@@ -333,6 +333,101 @@ int             opStd2PointXOver(G_GENETIC * GEN)
 
     gAddIndividualToPopulation(&GEN->Population, Ind1);
     gAddIndividualToPopulation(&GEN->Population, Ind2);
+    result = 1;
+  cleanup:
+    gFreeIndividual(Ind1);
+    gFreeIndividual(Ind2);
+    return result;
+}
+
+int             opSafe2PointXOver(G_GENETIC * GEN)
+{
+    G_INDIVIDUAL   *Ind1;
+    GR_SLICE        slice1;
+    int             dim1;
+    int             parent1;
+    GR_SUBGRAPH    *Subgraph1;
+    GR_NODE        *N1;
+
+    G_INDIVIDUAL   *Ind2;
+    GR_SLICE        slice2;
+    int             dim2;
+    int             parent2;
+    GR_SUBGRAPH    *Subgraph2;
+    GR_NODE        *N2;
+
+    int             dim;
+    int             t;
+
+    int result = 0;
+
+    /* copy parent 1 */
+    parent1 = gTournament(GEN->Population.Individual, GEN->Mu, GEN->Tau);
+    Ind1 = gDuplicateIndividual(GEN, &GEN->Population.Individual[parent1]);
+    if (msgCheckLevel(MSG_DEBUG)) {
+	FILE           *F;
+
+	F = fopen("parent1.deb", "w");
+	grDumpGraph(Ind1->Graph, F, 0);
+	grDumpGraph(Ind1->Graph, F, 1);
+	fclose(F);
+    }
+    /* copy parent 2 */
+    parent2 = gTournament(GEN->Population.Individual, GEN->Mu, GEN->Tau);
+    Ind2 = gDuplicateIndividual(GEN, &GEN->Population.Individual[parent2]);
+    if (msgCheckLevel(MSG_DEBUG)) {
+	FILE           *F;
+
+	F = fopen("parent2.deb", "w");
+	grDumpGraph(Ind2->Graph, F, 0);
+	grDumpGraph(Ind2->Graph, F, 1);
+	fclose(F);
+    }
+    gAddAncestor(Ind1, GEN->Population.Individual[parent1].id);
+    gAddAncestor(Ind1, GEN->Population.Individual[parent2].id);
+    gAddAncestor(Ind2, GEN->Population.Individual[parent1].id);
+    gAddAncestor(Ind2, GEN->Population.Individual[parent2].id);
+
+    /* get a random slice from parent 1 */
+    t = lrand48() % Ind1->Graph->nSubgraphs;
+    msgMessage(MSG_DEBUG,
+	       "opSafe2PointXOver::Debug: Selected subgraph %d from individual 1 (section: %d)", t,
+	       Ind1->Graph->Subgraph[t]->Section);
+    Subgraph1 = Ind1->Graph->Subgraph[t];
+    slice1.Cut1 = grGetRandomNode(Subgraph1);
+    slice1.Cut2 = grGetRandomNode(Subgraph1);
+    grValidateSliceLight(&slice1);
+    dim1 = grSliceSize(&slice1);
+
+    /* get a random slice from parent 2 */
+    Subgraph2 = grGetRandomCompatibleSubgraph(Ind2->Graph, slice1.Cut1->Subgraph);
+    if (!Subgraph2) {
+	msgMessage(MSG_DEBUG, "opSafe2PointXOver::Debug: Can't find a compatible subgraph");
+	goto cleanup;
+    }
+    slice2.Cut1 = grGetRandomNode(Subgraph2);
+    slice2.Cut2 = grGetRandomNode(Subgraph2);
+    grValidateSliceLight(&slice2);
+    dim2 = grSliceSize(&slice2);
+
+    dim = min(dim1, dim2);
+    grShrinkSlice(&slice1, dim);
+    grShrinkSlice(&slice2, dim);
+
+
+    N1 = slice1.Cut1;
+    N2 = slice2.Cut1;
+    for (t = 0; t < dim; ++t) {
+	msgMessage(MSG_DEBUG, "Step %d/%d swapping %p %p", t+1, dim, N1, N2);
+	grSwapNodesSafe(N1, N2);
+	grCheckGraph(Ind1->Graph);
+	grCheckGraph(Ind2->Graph);
+	N1 = N1->Succ;
+	N2 = N2->Succ;
+    }
+    gAddIndividualToPopulation(&GEN->Population, Ind1);
+    gAddIndividualToPopulation(&GEN->Population, Ind2);
+
     result = 1;
   cleanup:
     gFreeIndividual(Ind1);

@@ -4,19 +4,19 @@
 *   ######      * Politecnico di Torino - Dip. Automatica e Informatica      *
 *   ###   \     * Cso Duca degli Abruzzi 24 / I-10129 TORINO / ITALY         *
 *    ##G  c\    *                                                            *
-*    #     _\   * Tel: +39-011564.7186  /  Fax: +39-011564.7099              *
+*    #     _\   * Tel: +39-011-564.7092  /  Fax: +39-011-564.7099            *
 *    |   _/     * email: giovanni.squillero@polito.it                        *
 *    |  _/      * www  : http://www.cad.polito.it/~squiller/                 *
 *               *                                                            *
 ******************************************************************************
 *
 *   $Source: /home/squiller/tools/uGP/RCS/ugp.h,v $
-* $Revision: 1.9 $
-*     $Date: 2004/02/06 16:17:24 $
+* $Revision: 1.11 $
+*     $Date: 2004/03/29 16:17:11 $
 *
 ******************************************************************************
 *                                                                            *
-*  Copyright (c) 2002-2006 Giovanni Squillero                                *
+*  Copyright (c) 2002-2003 Giovanni Squillero                                *
 *                                                                            *
 *  This  program  is   free  software;   you can  redistribute   it  and/or  *
 *  modify  it under   the terms  of  the  GNU General   Public License   as  *
@@ -30,22 +30,36 @@
 *                                                                            *
 \****************************************************************************/
 
-#define VERSION_NUMBER	"2.7.0 [beta]"
-#define VERSION_NAME	"\"Dasyuroides byrnei\""
-/* 
+#define VERSION_NUMBER	"2.9.7 [beta]"
+#define VERSION_NAME	"\"April Fool\""
+/*****************************************************************************
+ * #define VERSION_NAME	"\"Dasyuroides byrnei\""
  * common name: Kowari 
- * 
  * Habitat : Sandy deserts of central Australia
  * Diet : Eats small vertibrates and invertibrates.
  * Size : reaches 320mm of which 140mm is the tail and weighs about 120grams.
+ *****************************************************************************
+ * #define VERSION_NAME	"\"Peniocereus greggii\""
+ * common name for: Arizona Queen of the Night 
+ *****************************************************************************
  */
 
-/* #define VERSION_NAME	"\"Peniocereus greggii\"" */
-/* comon name for: Arizona Queen of the Night */
+#ifndef UGP_LINKED_BY
+#define UGP_LINKED_BY "anonymous"
+#endif
+
+#ifndef UGP_LINKED_MACHINE
+#define UGP_LINKED_MACHINE "unknown"
+#endif
+
+#ifndef UGP_FLAGS
+#define UGP_FLAGS "unknown"
+#endif
 
 #define MAX_LINE 	1024
 #define MAX_MACRO_SIZE	4096
 #define TMP_SIZE 	1024
+#define TMP_SMALL_SIZE 	64
 
 char           *ugpLinkingDate(void);
 char           *ugpLinkingUser(void);
@@ -53,7 +67,7 @@ char           *ugpLinkingMachine(void);
 char           *ugpLinkingFlags(void);
 
 /* Berkeley FreeBSD */
-int             setenv( register const char *name, register const char *value, int rewrite);
+int             setenv(register const char *name, register const char *value, int rewrite);
 char           *getenv(const char *name);
 
 

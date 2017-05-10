@@ -4,7 +4,7 @@
 *   ######      *  Politecnico di Torino - Dip. Automatica e Informatica     *
 *   ###   \     *  Cso Duca degli Abruzzi 24 / I-10129 TORINO / ITALY        *
 *    ##G  c\    *                                                            *
-*    #     _\   *  Tel: +39-011564.7186  /  Fax: +39-011564.7099             *
+*    #     _\   *  Tel: +39-011564.7092  /  Fax: +39-011564.7099             *
 *    |   _/     *  email: giovanni.squillero@polito.it                       *
 *    |  _/      *  www  : http://www.cad.polito.it/staff/squillero/          *
 *               *                                                            *
@@ -16,7 +16,7 @@
 *
 ******************************************************************************
 *                                                                            *
-*  Copyright (c) 2002-2006 Giovanni Squillero                                *
+*  Copyright (c) 2002-2003 Giovanni Squillero                                *
 *                                                                            *
 *  This  program  is   free  software;   you can  redistribute   it  and/or  *
 *  modify  it under   the terms  of  the  GNU General   Public License   as  *
@@ -29,6 +29,52 @@
 *  General   PublicLicensefor  more details                                  *
 *                                                                            *
 \****************************************************************************/
+
+/****************************************************************************/
+/*              L O C A L   D A T A   S T R U C T U R E S                   */
+/****************************************************************************/
+
+#define DEFAULT_COMMENT_FORMAT  	"; %s\n"
+#define DEFAULT_LABEL_FORMAT    	"%s:\n"
+
+#define TSTRING_SECTION 		".section"
+#define TSTRING_TYPE 			".type"
+#define TSTRING_MACRO 			".macro"
+#define TSTRING_REGEXP 			".re"
+#define TSTRING_ENDMACRO 		".endmacro"
+#define TSTRING_PROLOGUE 		".prologue"
+#define TSTRING_ENDPROLOGUE 		".endprologue"
+#define TSTRING_GLOBALPROLOGUE 		".globalprologue"
+#define TSTRING_ENDGLOBALPROLOGUE 	".endglobalprologue"
+#define TSTRING_EPILOGUE 		".epilogue"
+#define TSTRING_ENDEPILOGUE 		".endepilogue"
+#define TSTRING_GLOBALEPILOGUE 		".globalepilogue"
+#define TSTRING_ENDGLOBALEPILOGUE 	".endglobalepilogue"
+#define TSTRING_PROBABILITY		".probability"
+#define TSTRING_PARAMETER 		".parameter"
+#define TSTRING_LABELFORMAT		".labelformat"
+#define TSTRING_COMMENTFORMAT		".commentformat"
+#define TSTRING_ALLOWMULTIPLE		".allowmultiple"
+#define TSTRING_ALWAYSDUMP		".alwaysdump"
+
+enum {
+    TOKEN_ILLEGAL = -1,
+    TOKEN_DATA = 0,
+    TOKEN_TYPE,
+    TOKEN_SECTION,
+    TOKEN_MACRO, TOKEN_ENDMACRO,
+    TOKEN_PROLOGUE, TOKEN_ENDPROLOGUE,
+    TOKEN_GLOBALPROLOGUE, TOKEN_ENDGLOBALPROLOGUE,
+    TOKEN_EPILOGUE, TOKEN_ENDEPILOGUE,
+    TOKEN_GLOBALEPILOGUE, TOKEN_ENDGLOBALEPILOGUE,
+    TOKEN_PROBABILITY,
+    TOKEN_PARAMETER,
+    TOKEN_LABELFORMAT,
+    TOKEN_REGEXP,
+    TOKEN_COMMENTFORMAT,
+    TOKEN_ALLOWMULTIPLE,
+    TOKEN_ALWAYSDUMP
+};
 
 enum {
     PARAMETER_UNKNOWN = 0,
@@ -63,6 +109,7 @@ typedef struct _IL_MACRO {
     int             id;
     int             Probability;
     char           *LabelFormat;
+    char           *RegExp;
     char           *Text;
     int             nParameters;
     IL_PARAMETER    **Parameter;

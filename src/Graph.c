@@ -4,19 +4,19 @@
 *   ######      *  Politecnico di Torino - Dip. Automatica e Informatica     *
 *   ###   \     *  Cso Duca degli Abruzzi 24 / I-10129 TORINO / ITALY        *
 *    ##G  c\    *                                                            *
-*    #     _\   *  Tel: +39-011564.7186  /  Fax: +39-011564.7099             *
+*    #     _\   *  Tel: +39-011564.7092  /  Fax: +39-011564.7099             *
 *    |   _/     *  email: giovanni.squillero@polito.it                       *
 *    |  _/      *  www  : http://www.cad.polito.it/staff/squillero/          *
 *               *                                                            *
 ******************************************************************************
 *
 *   $Source: /home/squiller/tools/uGP/RCS/Graph.c,v $
-* $Revision: 1.9 $
-*     $Date: 2003/12/02 13:29:16 $
+* $Revision: 1.12 $
+*     $Date: 2004/03/29 16:17:11 $
 *
 ******************************************************************************
 *                                                                            *
-*  Copyright (c) 2002-2006 Giovanni Squillero                                *
+*  Copyright (c) 2002-2003 Giovanni Squillero                                *
 *                                                                            *
 *  This  program  is   free  software;   you can  redistribute   it  and/or  *
 *  modify  it under   the terms  of  the  GNU General   Public License   as  *
@@ -53,8 +53,12 @@
 /*
  * INTERNAL PROTOS
  */
-static void     igrDumpFreeMacro(IL_MACRO *M, FILE *FOut, int Options);
-static int      igrCountSubgraphInSection(int Section, GR_GRAPH *F);
+int             igrCmpSubgraph(GR_SUBGRAPH * S1, GR_SUBGRAPH * S2);
+int             igrCmpNode(GR_NODE * N1, GR_NODE * N2);
+GR_NODE        *igrSeekHeadSafe(GR_NODE * N);
+int             igrCmpNodeTopologies(GR_NODE * N1, GR_NODE * N2);
+static void     igrDumpFreeMacro(IL_MACRO * M, FILE * FOut, int Options);
+static int      igrCountSubgraphInSection(int Section, GR_GRAPH * F);
 static int      igrStealSubgraph(GR_GRAPH * Thief, GR_SUBGRAPH * Sub);
 static GR_SUBGRAPH *igrCreateRandomSubgraph(GR_GRAPH * F, IL_LIBRARY * IL, int sec);
 static void     igrFixSubgraph(GR_SUBGRAPH * G, GR_GRAPH * Parent);
@@ -87,6 +91,10 @@ static char    *igrNodeName(GR_NODE * N);
 /****************************************************************************/
 
 static long     GlobalNodeCount = 0;
+static unsigned long int stat_TotGraphs = 0;
+static unsigned long int stat_Clones = 0;
+static unsigned long int stat_HashFailures = 0;
+
 
 /****************************************************************************/
 /*                I N T E R N A L     F U N C T I O N S                     */
@@ -190,10 +198,12 @@ int             grRandomizeNodeParameter(GR_NODE * Node, int op)
 		   Node->Macro->Parameter[op]->Type);
 	break;
     case PARAMETER_HEX:
-	if(!Node->ParameterValue[op].Constant)
-	    Node->ParameterValue[op].Constant = CheckCalloc(sizeof(char), Node->Macro->Parameter[op]->Def.Digits+1);
-	for(t=0; t<Node->Macro->Parameter[op]->Def.Digits; ++t)
-	    Node->ParameterValue[op].Constant[t] = "0123456789ABCDEF"[lrand48()%16];
+	if (!Node->ParameterValue[op].String)
+	    Node->ParameterValue[op].String =
+		CheckCalloc(sizeof(char), Node->Macro->Parameter[op]->Def.Digits + 1);
+
+	for (t = 0; t < Node->Macro->Parameter[op]->Def.Digits; ++t)
+	    Node->ParameterValue[op].String[t] = "0123456789ABCDEF"[lrand48() % 16];
 	break;
     case PARAMETER_INTEGER:
 	Node->ParameterValue[op].Integer = Node->Macro->Parameter[op]->Def.Integer.From +
@@ -201,10 +211,10 @@ int             grRandomizeNodeParameter(GR_NODE * Node, int op)
 			 Node->Macro->Parameter[op]->Def.Integer.From);
 	break;
     case PARAMETER_CONSTANT:
-	Node->ParameterValue[op].Constant =
+	Node->ParameterValue[op].String =
 	    Node->Macro->Parameter[op]->Def.Constant.Constant[lrand48() %
-							      Node->Macro->Parameter[op]->Def.
-							      Constant.nConstants];
+							      Node->Macro->Parameter[op]->
+							      Def.Constant.nConstants];
 	break;
     case PARAMETER_INNER_FORWARD_LABEL:
 	/* first: dereference old target */
@@ -400,14 +410,14 @@ static void     igrDumpNode(GR_NODE * N, FILE * FOut, int Options)
 	    actual = igrUniqueTag();
 	    break;
 	case PARAMETER_HEX:
-	    actual = N->ParameterValue[o].Constant;
+	    actual = N->ParameterValue[o].String;
 	    break;
 	case PARAMETER_INTEGER:
 	    sprintf(tmp, "%ld", N->ParameterValue[o].Integer);
 	    actual = tmp;
 	    break;
 	case PARAMETER_CONSTANT:
-	    actual = N->ParameterValue[o].Constant;
+	    actual = N->ParameterValue[o].String;
 	    break;
 	case PARAMETER_INNER_FORWARD_LABEL:
 	case PARAMETER_INNER_BACKWARD_LABEL:
@@ -431,7 +441,7 @@ static void     igrDumpNode(GR_NODE * N, FILE * FOut, int Options)
     SearchReplace(m, key, "$");
     SearchReplace(m, "\\n", "\n");
 
-    if(Options & DUMP_OP_TRANSLATE)
+    if (Options & DUMP_OP_TRANSLATE)
 	SearchReplace(m, "+-", "-");
     fprintf(FOut, "%s", m);
 }
@@ -582,11 +592,11 @@ void            grDumpGraph(GR_GRAPH * F, FILE * FOut, int Options)
     fprintf(FOut, "\n");
 
     igrDumpFreeMacro(IL->GlobalPrologue, FOut, Options);
-    for(s=0; s<IL->nSections; ++s) {
-	if(igrCountSubgraphInSection(s, F) || IL->Section[s]->AlwaysDump) {
+    for (s = 0; s < IL->nSections; ++s) {
+	if (igrCountSubgraphInSection(s, F) || IL->Section[s]->AlwaysDump) {
 	    igrDumpFreeMacro(IL->Section[s]->GlobalPrologue, FOut, Options);
 	    for (t = 0; t < F->nSubgraphs; ++t)
-		if(F->Subgraph[t]->Section == s)
+		if (F->Subgraph[t]->Section == s)
 		    grDumpSubgraph(F->Subgraph[t], FOut, Options);
 	    igrDumpFreeMacro(IL->Section[s]->GlobalEpilogue, FOut, Options);
 	}
@@ -601,7 +611,7 @@ void            grDumpGraph(GR_GRAPH * F, FILE * FOut, int Options)
     fprintf(FOut, IL->CommentFormat, tmp);
 }
 
-static void     igrDumpFreeMacro(IL_MACRO *M, FILE *FOut, int Options)
+static void     igrDumpFreeMacro(IL_MACRO * M, FILE * FOut, int Options)
 {
     GR_NODE        *N;
 
@@ -612,17 +622,17 @@ static void     igrDumpFreeMacro(IL_MACRO *M, FILE *FOut, int Options)
     igrFreeNode(N);
 }
 
-static int      igrCountSubgraphInSection(int Section, GR_GRAPH *F)
+static int      igrCountSubgraphInSection(int Section, GR_GRAPH * F)
 {
-    int t;
-    int count = 0;
+    int             t;
+    int             count = 0;
 
     for (t = 0; t < F->nSubgraphs; ++t)
-	if(F->Subgraph[t]->Section == Section)
+	if (F->Subgraph[t]->Section == Section)
 	    ++count;
     return count;
 }
-    
+
 
 GR_SUBGRAPH    *grAddEmptySubgraph(GR_GRAPH * Graph, IL_LIBRARY * Lib, int sec)
 {
@@ -798,7 +808,7 @@ int             grLoadGraphFromFile(GR_GRAPH * F, IL_LIBRARY * IL, FILE * Fin)
     GR_SUBGRAPH    *T;
     HASH_TABLE     *NodeNames;
 
-    NodeNames = hInitHash(1024, HASH_KEY_CASE);
+    NodeNames = hInitHash(1549, HASH_KEY_CASE);
     fscanf(Fin, "%lu", &seed);
     msgMessage(MSG_DEBUG, "grLoadGraphFromFile::Debug: seed %lu", seed);
     fscanf(Fin, "%d", &newsubgraphs);
@@ -851,11 +861,11 @@ static void     igrLoadSubgraphParametersFromFile(GR_SUBGRAPH * T, IL_LIBRARY * 
 	    switch (optype) {
 	    case 'h':		/* PARAMETER_HEX */
 		fscanf(Fin, "%s", tmp);
-		N->ParameterValue[o].Constant = strdup(tmp);
-		CheckTrue(strlen(N->ParameterValue[o].Constant) == N->Macro->Parameter[o]->Def.Digits);
-		msgMessage(MSG_DEBUG,
-			   "igrLoadSubgraphParametersFromFile::Debug: hex parameter %s",
-			   N->ParameterValue[o].Constant);
+		N->ParameterValue[o].String = strdup(tmp);
+		CheckTrue(strlen(N->ParameterValue[o].String) ==
+			  N->Macro->Parameter[o]->Def.Digits);
+		msgMessage(MSG_DEBUG, "igrLoadSubgraphParametersFromFile::Debug: hex parameter %s",
+			   N->ParameterValue[o].String);
 		break;
 	    case 'i':		/* PARAMETER_INTEGER */
 		fscanf(Fin, "%ld", &N->ParameterValue[o].Integer);
@@ -867,12 +877,12 @@ static void     igrLoadSubgraphParametersFromFile(GR_SUBGRAPH * T, IL_LIBRARY * 
 		fscanf(Fin, "%s", tmp);
 		for (t = 0; t < N->Macro->Parameter[o]->Def.Constant.nConstants; ++t)
 		    if (!strcmp(tmp, N->Macro->Parameter[o]->Def.Constant.Constant[t]))
-			N->ParameterValue[o].Constant =
+			N->ParameterValue[o].String =
 			    N->Macro->Parameter[o]->Def.Constant.Constant[t];
-		CheckTrue(N->ParameterValue[o].Constant);
+		CheckTrue(N->ParameterValue[o].String);
 		msgMessage(MSG_DEBUG,
 			   "igrLoadSubgraphParametersFromFile::Debug: constant parameter \"%s\"",
-			   N->ParameterValue[o].Constant);
+			   N->ParameterValue[o].String);
 		break;
 	    case 'u':		/* PARAMETER_UNIQUE_TAG */
 		msgMessage(MSG_DEBUG, "igrLoadSubgraphParametersFromFile::Debug: unique tag");
@@ -899,13 +909,13 @@ void            igrSaveSubgraphParametersToFile(GR_SUBGRAPH * T, FILE * F)
 	for (o = 0; o < N->Macro->nParameters; ++o) {
 	    switch (N->Macro->Parameter[o]->Type) {
 	    case PARAMETER_HEX:
-		fprintf(F, "h %s\n", N->ParameterValue[o].Constant);
+		fprintf(F, "h %s\n", N->ParameterValue[o].String);
 		break;
 	    case PARAMETER_INTEGER:
 		fprintf(F, "i %ld\n", N->ParameterValue[o].Integer);
 		break;
 	    case PARAMETER_CONSTANT:
-		fprintf(F, "k %s\n", N->ParameterValue[o].Constant);
+		fprintf(F, "k %s\n", N->ParameterValue[o].String);
 		break;
 	    case PARAMETER_UNIQUE_TAG:
 		fprintf(F, "u\n");
@@ -939,8 +949,8 @@ GR_GRAPH       *grDuplicateGraph(GR_GRAPH * SrcGraph)
     /*
      * duplicate structure
      */
-    NodeNames = hInitHash(1024, HASH_KEY_CASE);
-    DstGraph = (GR_GRAPH *) CheckCalloc(1, sizeof(GR_GRAPH));
+    NodeNames = hInitHash(1549, HASH_KEY_CASE);
+    DstGraph = grGetNewGraph();
     DstGraph->nSubgraphs = SrcGraph->nSubgraphs;
     DstGraph->Subgraph = (GR_SUBGRAPH **) CheckCalloc(DstGraph->nSubgraphs, sizeof(GR_SUBGRAPH *));
     for (t = 0; t < SrcGraph->nSubgraphs; ++t) {
@@ -986,13 +996,13 @@ GR_GRAPH       *grDuplicateGraph(GR_GRAPH * SrcGraph)
 	    for (o = 0; o < DstNode->Macro->nParameters; ++o) {
 		switch (DstNode->Macro->Parameter[o]->Type) {
 		case PARAMETER_HEX:
-		    DstNode->ParameterValue[o].Constant = strdup(SrcNode->ParameterValue[o].Constant);
+		    DstNode->ParameterValue[o].String = strdup(SrcNode->ParameterValue[o].String);
 		    break;
 		case PARAMETER_INTEGER:
 		    DstNode->ParameterValue[o].Integer = SrcNode->ParameterValue[o].Integer;
 		    break;
 		case PARAMETER_CONSTANT:
-		    DstNode->ParameterValue[o].Constant = SrcNode->ParameterValue[o].Constant;
+		    DstNode->ParameterValue[o].String = SrcNode->ParameterValue[o].String;
 		    break;
 		case PARAMETER_INNER_FORWARD_LABEL:
 		case PARAMETER_INNER_BACKWARD_LABEL:
@@ -1022,7 +1032,7 @@ GR_GRAPH       *grDuplicateGraph(GR_GRAPH * SrcGraph)
 static void     igrFreeNode(GR_NODE * N)
 {
     msgMessage(MSG_DEBUG, "igrFreeNode::Debug: Zapping %s", grDebugNodeId(N));
-    if(N->ParameterValue)
+    if (N->ParameterValue)
 	CheckFree(N->ParameterValue);
     CheckFree(N);
 }
@@ -1090,14 +1100,15 @@ static void     igrCheckSubGraph(GR_SUBGRAPH * S)
 
     msgMessage(MSG_DEBUG, "igrCheckSubGraph::Checking reference count...");
     for (N = S->Head; N->Succ; N = N->Succ) {
-	CheckTrue(N->Subgraph->Head == grSeekHead(N));
+	CheckTrue(grSeekHead(N) == igrSeekHeadSafe(N));
 	ref = igrCountReferences(S, N);
 	if (N == S->Head && N->ReferenceCount != ref) {
 	    msgMessage(MSG_DEBUG,
 		       "igrCheckSubGraph::Debug: Prologue %p has reference count %d, but %d internal ref",
 		       N, N->ReferenceCount, ref);
 	} else {
-	    CheckTrue(N->ReferenceCount == ref);
+	    if(N->ReferenceCount != ref)
+		CheckTrue(N->ReferenceCount == ref);
 	}
 	CheckTrue(N->Succ->Prev == N);
     }
@@ -1136,7 +1147,7 @@ static void     igrCheckSubGraph(GR_SUBGRAPH * S)
     if (!found)
 	msgMessage(MSG_ERROR, "igrCheckSubGraph::Error: subgraph incoherent");
     else
-	msgMessage(MSG_DEBUG, "igrCheckSubGraph::Check complete");       
+	msgMessage(MSG_DEBUG, "igrCheckSubGraph::Check complete");
 }
 
 static int      igrCountReferences(GR_SUBGRAPH * S, GR_NODE * T)
@@ -1145,7 +1156,7 @@ static int      igrCountReferences(GR_SUBGRAPH * S, GR_NODE * T)
     int             ref;
     int             o;
 
-    msgMessage(MSG_DEBUG, "igrCountReferences::Counting references");       
+    msgMessage(MSG_DEBUG, "igrCountReferences::Counting references");
     for (ref = 0, N = S->Head; N; N = N->Succ) {
 	for (o = 0; o < N->Macro->nParameters; ++o) {
 	    if (ilIsParameterLabel(N->Macro->Parameter[o]) && !N->ParameterValue)
@@ -1154,8 +1165,7 @@ static int      igrCountReferences(GR_SUBGRAPH * S, GR_NODE * T)
 		++ref;
 	}
     }
-    msgMessage(MSG_DEBUG, "igrCountReferences::Found %d reference%s",
-	       ref, ref==1?"":"s");       
+    msgMessage(MSG_DEBUG, "igrCountReferences::Found %d reference%s", ref, ref == 1 ? "" : "s");
     return ref;
 }
 
@@ -1179,6 +1189,11 @@ static void     igrDereferenceNode(GR_NODE * N)
 }
 
 GR_NODE        *grSeekHead(GR_NODE * N)
+{
+    return N->Subgraph->Head;
+}
+
+GR_NODE        *igrSeekHeadSafe(GR_NODE * N)
 {
     while (N->Prev)
 	N = N->Prev;
@@ -1257,6 +1272,36 @@ GR_NODE        *grGetRandomSibling(GR_NODE * N)
     for (N2 = S->Head->Succ; r >= 0; --r)
 	N2 = N2->Succ;
     return N2;
+}
+
+int             grSliceSize(GR_SLICE * S)
+{
+    return grNodeDepth(S->Cut2) - grNodeDepth(S->Cut1);
+}
+
+int             grShrinkSlice(GR_SLICE * S, int size)
+{
+    while (grSliceSize(S) > size) {
+	if (drand48() > 0.5)
+	    S->Cut2 = S->Cut2->Prev;
+	else
+	    S->Cut1 = S->Cut1->Succ;
+    }
+    return 1;
+}
+
+int             grValidateSliceLight(GR_SLICE * S)
+{
+    char           *_FunctionName = "grValidateSliceLight";
+    GR_NODE        *N;
+
+    CheckTrue(grSeekHead(S->Cut1) == grSeekHead(S->Cut2));
+    if (igrDoesN1SuccedN2(S->Cut1, S->Cut2)) {
+	N = S->Cut1;
+	S->Cut1 = S->Cut2;
+	S->Cut2 = N;
+    }
+    return 1;
 }
 
 int             grValidateSlice(GR_SLICE * S)
@@ -1395,7 +1440,9 @@ GR_SUBGRAPH    *grGetRandomCompatibleSubgraph(GR_GRAPH * G, GR_SUBGRAPH * T)
     int             t;
     int             a;
 
-    msgMessage(MSG_DEBUG, "grGetRandomCompatibleSubgraph::Debug: Looking for a subgraph compatible with 0x%p (section: %d)", T, T->Section);
+    msgMessage(MSG_DEBUG,
+	       "grGetRandomCompatibleSubgraph::Debug: Looking for a subgraph compatible with 0x%p (section: %d)",
+	       T, T->Section);
     a = 0;
     for (t = 0; t < G->nSubgraphs; ++t)
 	if (G->Subgraph[t]->Section == T->Section)
@@ -1426,6 +1473,102 @@ void            grSwapNodes(GR_NODE * N1, GR_NODE * N2)
     msgMessage(MSG_DEBUG, "grSwapNodes::Debug: Invalidating subgraphs %s and %s",
 	       grDebugSubgraphId(SG1), grDebugSubgraphId(SG2));
     SG1->nNodes = SG2->nNodes = -1;
+}
+
+int             grSwapNodesSafe(GR_NODE * N1, GR_NODE * N2)
+{
+    GR_NODE         T1;
+    GR_NODE         T2;
+    int             p;
+    int             dist;
+    GR_NODE        *T;
+    int             t;
+    int 	    need_fix = 0;
+
+    msgMessage(MSG_DEBUG, "grSwapNodesSafe::Debug: Swapping nodes %p %p", N1, N2); 
+
+    /*
+     * avoid swapping Prologue/Epilogue with internal node
+     */
+    if(!!N1->Prev != !!N2->Prev)
+	return 0;
+    if(!!N1->Succ != !!N2->Succ)
+	return 0;
+
+    memcpy(&T1, N1, sizeof(GR_NODE));
+    memcpy(&T2, N2, sizeof(GR_NODE));
+
+    /* dereference referenced inner nodes */
+    for (p = 0; p < N1->Macro->nParameters; ++p) {
+	if (ilIsParameterInnerLabel(N1->Macro->Parameter[p])) {
+	    igrDereferenceNode(N1->ParameterValue[p].Node);
+	    msgMessage(MSG_DEBUG, "grSwapNodesSafe::Debug: Param %d: decreased %p refcount to %d", p, N1->ParameterValue[p].Node, N1->ParameterValue[p].Node->ReferenceCount);
+	    dist = grNodeDepth(N1->ParameterValue[p].Node) - grNodeDepth(N1);
+	    msgMessage(MSG_DEBUG, "grSwapNodesSafe::Debug: Param %d: translated %p to offset %+0d", p, N1->ParameterValue[p].Node, dist);
+	    N1->ParameterValue[p].Integer = dist;
+	}
+    }
+    for (p = 0; p < N2->Macro->nParameters; ++p) {
+	if (ilIsParameterInnerLabel(N2->Macro->Parameter[p])) {
+	    igrDereferenceNode(N2->ParameterValue[p].Node);
+	    msgMessage(MSG_DEBUG, "grSwapNodesSafe::Debug: Param %p: decreased %p refcount to %d", p, N2->ParameterValue[p].Node, N2->ParameterValue[p].Node->ReferenceCount);
+	    dist = grNodeDepth(N2->ParameterValue[p].Node) - grNodeDepth(N2);
+	    msgMessage(MSG_DEBUG, "grSwapNodesSafe::Debug: Param %p: translated %p to offset %+0d", p, N2->ParameterValue[p].Node, dist);
+	    N2->ParameterValue[p].Integer = dist;
+	}
+    }
+    
+    /* copy & repair */
+    N1->Macro = T2.Macro;
+    N1->ParameterValue = T2.ParameterValue;
+    for (p = 0; p < N1->Macro->nParameters; ++p) {
+	if (ilIsParameterInnerLabel(N1->Macro->Parameter[p])) {
+	    dist = N1->ParameterValue[p].Integer;
+	    if (dist > 0)
+		for (T = N1, t = 0; t < dist; ++t)
+		    T = T->Succ ? T->Succ : T;
+	    else
+		for (T = N1, t = 0; t < -dist; ++t)
+		    T = T->Prev->Prev ? T->Prev : T;
+	    N1->ParameterValue[p].Node = T;
+	    msgMessage(MSG_DEBUG, "grSwapNodesSafe::Debug: Translated offset %+0d to %p", dist, T);
+	    ++T->ReferenceCount;
+	    msgMessage(MSG_DEBUG, "grSwapNodesSafe::Debug: Increased %p refcount to %d", T, T->ReferenceCount);
+	} else if (ilIsParameterOuterLabel(N1->Macro->Parameter[p])) {
+	    msgMessage(MSG_DEBUG, "grSwapNodesSafe::Debug: Stealing subgraph %p", N1->ParameterValue[p].Node->Subgraph);
+	    need_fix = 1;
+	}
+    }
+
+    /* copy & repair */
+    N2->Macro = T1.Macro;
+    N2->ParameterValue = T1.ParameterValue;
+    for (p = 0; p < N2->Macro->nParameters; ++p) {
+	if (ilIsParameterInnerLabel(N2->Macro->Parameter[p])) {	    
+	    dist = N2->ParameterValue[p].Integer;
+	    if (dist > 0)
+		for (T = N2, t = 0; t < dist; ++t)
+		    T = T->Succ ? T->Succ : T;
+	    else
+		for (T = N2, t = 0; t < -dist; ++t)
+		    T = T->Prev->Prev ? T->Prev : T;
+	    N2->ParameterValue[p].Node = T;
+	    msgMessage(MSG_DEBUG, "grSwapNodesSafe::Debug: Translated offset %+0d to %p", dist, T);
+	    ++T->ReferenceCount;
+	    msgMessage(MSG_DEBUG, "grSwapNodesSafe::Debug: Increased %p refcount to %d", T, T->ReferenceCount);
+	} else if (ilIsParameterOuterLabel(N2->Macro->Parameter[p])) {
+	    msgMessage(MSG_DEBUG, "grSwapNodesSafe::Debug: Stealing subgraph %p", N2->ParameterValue[p].Node->Subgraph);
+	    need_fix = 1;
+	}
+    }
+
+    if(need_fix) {
+	msgMessage(MSG_DEBUG, "grSwapNodesSafe::Debug: Fixing subgraphs");
+	grFixGraph(N1->Subgraph->Graph);
+	grFixGraph(N2->Subgraph->Graph);
+    } 
+
+    return 1+need_fix;
 }
 
 static void     igrFixSubgraph(GR_SUBGRAPH * G, GR_GRAPH * Parent)
@@ -1550,4 +1693,189 @@ static int      igrStealSubgraph(GR_GRAPH * Thief, GR_SUBGRAPH * Sub)
 	}
     }
     return tot;
+}
+
+int             grNodeDepth(GR_NODE * N)
+{
+    GR_NODE        *T;
+    int             d;
+
+    for (d = 0, T = grSeekHead(N); T != N; T = T->Succ)
+	++d;
+    return d;
+}
+
+int             igrCmpNodeTopologies(GR_NODE * N1, GR_NODE * N2)
+{
+    if (N1->Macro != N2->Macro) {
+	msgMessage(MSG_DEBUG, "N1->Macro != N2->Macro");
+	return 1;
+    }
+    if (N1->ReferenceCount != N2->ReferenceCount) {
+	msgMessage(MSG_DEBUG, "N1->ReferenceCount != N2->ReferenceCount");
+	return 3;
+    }
+    if (grNodeDepth(N1) != grNodeDepth(N2)) {
+	msgMessage(MSG_DEBUG, "grNodeDepth(N1) != grNodeDepth(N2)");
+	return 4;
+    }
+
+    return 0;
+}
+
+int             igrCmpNode(GR_NODE * N1, GR_NODE * N2)
+{
+    int             p;
+
+    if (igrCmpNodeTopologies(N1, N2)) {
+	msgMessage(MSG_DEBUG, "igrCmpNodeTopologies(N1, N2)");
+	return -1;
+    }
+
+    for (p = 0; p < N1->Macro->nParameters; ++p) {
+	switch (N1->Macro->Parameter[p]->Type) {
+	case PARAMETER_UNIQUE_TAG:
+	    break;
+	case PARAMETER_CONSTANT:
+	case PARAMETER_HEX:
+	    if (strcmp(N1->ParameterValue[p].String, N2->ParameterValue[p].String)) {
+		msgMessage(MSG_DEBUG,
+			   "strcmp(N1->ParameterValue[p].String, N2->ParameterValue[p].String)");
+		return 1 + p;
+	    }
+	    break;
+	case PARAMETER_INTEGER:
+	    if (N1->ParameterValue[p].Integer != N2->ParameterValue[p].Integer) {
+		msgMessage(MSG_DEBUG,
+			   "N1->ParameterValue[p].Integer != N2->ParameterValue[p].Integer");
+		return 1 + p;
+	    }
+	    break;
+	case PARAMETER_INNER_FORWARD_LABEL:
+	case PARAMETER_INNER_BACKWARD_LABEL:
+	case PARAMETER_INNER_GENERIC_LABEL:
+	case PARAMETER_OUTER_LABEL:
+	    if (igrCmpNodeTopologies(N1->ParameterValue[p].Node, N2->ParameterValue[p].Node)) {
+		msgMessage(MSG_DEBUG,
+			   "!igrCmpNodeTopologies(N1->ParameterValue[p].Node, N2->ParameterValue[p].Node)");
+		return 1 + p;
+	    }
+	}
+    }
+    return 0;
+}
+
+int             igrCmpSubgraph(GR_SUBGRAPH * S1, GR_SUBGRAPH * S2)
+{
+    int             n;
+    GR_NODE        *N1, *N2;
+
+    if (S1->nNodes != S2->nNodes) {
+	msgMessage(MSG_DEBUG, "S1->nNodes != S2->nNodes");
+	return -1;
+    }
+    if (S1->Section != S2->Section) {
+	msgMessage(MSG_DEBUG, "S1->Section != S2->Section");
+	return -2;
+    }
+
+    N1 = S1->Head;
+    N2 = S2->Head;
+    for (n = 0; n < S1->nNodes; ++n) {
+	if (igrCmpNode(N1, N2)) {
+	    msgMessage(MSG_DEBUG, "igrCmpNode(N1, N2)");
+	    return 1 + n;
+	}
+	N1 = N1->Succ;
+	N2 = N2->Succ;
+    }
+    return 0;
+}
+
+int             grCmpGraph(GR_GRAPH * G1, GR_GRAPH * G2)
+{
+    int             s;
+
+    if (G1->HashID && G2->HashID && G1->HashID != G2->HashID) {
+	msgMessage(MSG_DEBUG, "grCmpGraph::Debug: G1->HashID != G2->HashID");
+	return -1;
+    }
+    if (G1->nSubgraphs != G2->nSubgraphs) {
+	msgMessage(MSG_VERBOSE,
+		   "grCmpGraph::Debug: Same hashes but G1->nSubgraphs != G2->nSubgraphs");
+	++stat_HashFailures;
+	return -2;
+    }
+    for (s = 0; s < G1->nSubgraphs; ++s) {
+	if (igrCmpSubgraph(G1->Subgraph[s], G2->Subgraph[s])) {
+		msgMessage(MSG_VERBOSE,
+			   "grCmpGraph::Debug: Same hashes but igrCmpSubgraph(G1->Subgraph[s], G2->Subgraph[s])) ");
+		++stat_HashFailures;
+		return 1 + s;
+	}
+    }
+    ++stat_Clones;
+    return 0;
+}
+
+long int        grCalculateHashID(GR_GRAPH * G)
+{
+    int             s;
+    GR_NODE        *N;
+    int             h, p;
+
+    G->HashID = 0;
+    G->HashID = hHashFunctionInt(G->nSubgraphs, G->HashID);
+    for (s = 0; s < G->nSubgraphs; ++s) {
+	G->HashID = hHashFunctionInt(G->Subgraph[s]->nNodes, G->HashID);
+	for (N = G->Subgraph[s]->Head; N; N = N->Succ) {
+	    /*
+	     * Calculate node's HashID
+	     */
+	    N->HashID = hHashFunctionInt(N->ReferenceCount, 0L);
+	    N->HashID = hHashFunctionInt(N->Macro->id, N->HashID);
+	    for (p = 0; p < N->Macro->nParameters; ++p) {
+		N->HashID = hHashFunctionInt(N->Macro->Parameter[p]->Type, N->HashID);
+		switch (N->Macro->Parameter[p]->Type) {
+		case PARAMETER_UNIQUE_TAG:
+		    break;
+		case PARAMETER_CONSTANT:
+		case PARAMETER_HEX:
+		    for (h = 0; N->ParameterValue[p].String[h]; ++h)
+			N->HashID = hHashFunctionInt(N->ParameterValue[p].String[h], N->HashID);
+		    break;
+		case PARAMETER_INTEGER:
+		    N->HashID = hHashFunctionInt(N->ParameterValue[p].Integer, N->HashID);
+		    break;
+		case PARAMETER_INNER_FORWARD_LABEL:
+		case PARAMETER_INNER_BACKWARD_LABEL:
+		case PARAMETER_INNER_GENERIC_LABEL:
+		case PARAMETER_OUTER_LABEL:
+		    N->HashID = hHashFunctionInt(grNodeDepth(N->ParameterValue[p].Node), N->HashID);
+		}
+	    }
+	    /*
+	     * Use node's HashID for Graph
+	     */
+	    G->HashID = hHashFunctionInt(N->HashID, G->HashID);
+	}
+    }
+    msgMessage(MSG_DEBUG, "grCalculateHashID::Debug: Graph 0x%p HASH: 0x%08lx", G, G->HashID);
+    return G->HashID;
+}
+
+
+void            grDisplayGraphStat(void)
+{
+    msgMessage(MSG_INFO | MSG_NOTIME, "");
+    msgMessage(MSG_INFO, "gGraphStat::");
+    msgMessage(MSG_INFO | MSG_NOTIME, "Total number of graphs: %lu", stat_TotGraphs);
+    msgMessage(MSG_INFO | MSG_NOTIME, "Detected clones: %lu (hash failures: %lu)", stat_Clones,
+	       stat_HashFailures);
+}
+
+GR_GRAPH       *grGetNewGraph(void)
+{
+    ++stat_TotGraphs;
+    return CheckCalloc(1, sizeof(GR_GRAPH));
 }
