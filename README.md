@@ -1,8 +1,8 @@
 MicroGP v2
 ==========
 
-[![Status: Obsolete](https://img.shields.io/badge/status-obsolete-red.svg)](https://github.com/squillero/microgp3)
 [![License: GPL](https://img.shields.io/badge/license-gpl--2.0-green.svg)](https://opensource.org/licenses/GPL-2.0)
+[![Status: Obsolete](https://img.shields.io/badge/status-obsolete-red.svg)](https://github.com/squillero/microgp3)
 ![Language: C](https://img.shields.io/badge/language-C-blue.svg)
 
 MicroGP (µGP, uGP, ugp, `&micro;GP`) is an evolutionary approach for generating assembly programs tuned for a specific microprocessor (hence the Greek letter micro in its name). It first fosters a set of random programs, then iteratively refines and enhance them toward a given goal. It uses the result of an external evaluation, together with some internal information, to efficiently explore the search space (DOI: [10.1007/s10710-005-2985-x](https://link.springer.com/article/10.1007/s10710-005-2985-x)).
