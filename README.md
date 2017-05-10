@@ -1,6 +1,6 @@
 # MicroGP v2
 
-![Status: Obsolete](https://img.shields.io/badge/status-obsolete-red.svg)
+[![Status: Obsolete](https://img.shields.io/badge/status-obsolete-red.svg)](https://github.com/squillero/microgp3)
 [![License: GPL](https://img.shields.io/badge/license-gpl--2.0-green.svg)](https://opensource.org/licenses/GPL-2.0)
 ![Language: C](https://img.shields.io/badge/language-C-blue.svg)
 
