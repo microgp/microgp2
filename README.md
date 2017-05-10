@@ -4,26 +4,9 @@
 [![License: GPL](https://img.shields.io/badge/license-gpl--2.0-green.svg)](https://opensource.org/licenses/GPL-2.0)
 ![Language: C](https://img.shields.io/badge/language-C-blue.svg)
 
-MicroGP (µGP, uGP, `ugp`, `&micro;GP`) is a versatile optimizer able to
-outperform both human experts and conventional heuristics in finding
-the optimal solution of hard problems. Given a task, it first fosters
-a set of random solutions, then iteratively refines and enhance
-them. Its heuristic algorithm uses the result of the evaluations,
-together with other internal information, to efficiently explore the
-search space, and eventually to produce the optimal solution.
+MicroGP (µGP, uGP, ugp, `&micro;GP`) is a versatile optimizer able to outperform both human experts and conventional heuristics in finding the optimal solution of hard problems. Given a task, it first fosters a set of random solutions, then iteratively refines and enhance them. Its heuristic algorithm uses the result of the evaluations, together with other internal information, to efficiently explore the search space, and eventually to produce the optimal solution. MicroGP original purpose was creating assembly-language programs to test different microprocessors, hence the Greek letter micro in its name.
 
-MicroGP is an evolutionary algorithm, hence the acronym GP (genetic
-programming) in its name. A population of different solutions is
-considered in each step of the search process, and new individuals are
-generated through mechanisms that ape both sexual and asexual
-reproduction. New solutions inherit distinctive traits from existing
-ones, and may coalesce the good characteristics of different
-parents. Better solutions have a greater chance to reproduce and to
-succeed in the simulated struggle for existence.
-
-MicroGP v2 has been written in 2002 for creating assembly-language
-programs to test different microprocessors, hence the Greek letter
-micro in its name.
+MicroGP v2 was developed in 2003 and maintained since 2006 (DOI: [10.1007/s10710-005-2985-x](https://link.springer.com/article/10.1007/s10710-005-2985-x)). The first version was codenamed *Chicken Pox*, because the isolation caused by that infection allowed to write most of the code in a single week. It added several new features and significantly broadened the applicability of MicroGP v1. It was able to load a list of parametric code fragments, called *macros*, and optimize their order inside a test program. With time, it has been coerced into solving problems it was not meant for. While useful for improving its performance, this extended usage made the basic limitations of the tool clear, and ultimately led to the need to [re-implement µGP from scratch](https://github.com/squillero/microgp3).
 
 **Copyright © 2003-2006 Giovanni Squillero**
 
