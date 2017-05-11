@@ -5,7 +5,7 @@ MicroGP v2
 [![Status: Obsolete](https://img.shields.io/badge/status-obsolete-red.svg)](https://github.com/squillero/microgp3)
 ![Language: C](https://img.shields.io/badge/language-C-blue.svg)
 
-MicroGP v2 (µGPv2, uGP2, ugp2, `&micro;GP v2`) is an evolutionary tool for generating assembly programs tweaked for a specific microprocessor — hence the Greek letter micro in its name. µGPv2 first fosters a set of random programs, then iteratively refines and enhance them in order to maximize a given metric. It uses the result of an external evaluation, together with some internal information, to efficiently explore the search space (DOI: [10.1007/s10710-005-2985-x](http://dx.doi.org/10.1007/s10710-005-2985-x)).
+MicroGP v2 (ugp2) is an evolutionary tool for generating assembly programs tweaked for a specific microprocessor — hence the Greek letter micro in its name. µGPv2 first fosters a set of random programs, then iteratively refines and enhance them in order to maximize a given metric. It uses the result of an external evaluation, together with some internal information, to efficiently explore the search space (DOI: [10.1007/s10710-005-2985-x](http://dx.doi.org/10.1007/s10710-005-2985-x)).
 
 µGPv2 was developed in 2002 and maintained since 2006; the first version was codenamed *Chicken Pox*, because the isolation caused by that infection allowed me to write most of the code in a single week. µGPv2 added several new features and significantly broadened the applicability of the first working prototype (DOI: [10.1109/CEC.2002.1004462](http://dx.doi.org/10.1109/CEC.2002.1004462)): it was able to load a list of parametric code fragments, called *macros*, and to optimize both their order inside a test program and their parameters. 
 
