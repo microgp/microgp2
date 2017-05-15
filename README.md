@@ -11,6 +11,6 @@ MicroGP was developed in 2002 and maintained since 2006; the first version was c
 
 While MicroGP was mainly exploited for test and verification of small microprocessors, in a collaboration with Intel it scaled up tackling a real Pentium 4 (DOI: [10.1109/MTV.2004.5](http://dx.doi.org/10.1109/MTV.2004.5)). And in a far less mundane research, it created the first *machine-written programs* ever able to become *King of the Hill* in all the main international *core-war* competitions (DOI: [10.1109/TEVC.2005.856207](http://dx.doi.org/10.1109/TEVC.2005.856207)). With time, MicroGP has been coerced into solving problems it was not meant for, and ultimately was [re-implemented from scratch](https://github.com/squillero/microgp3).
 
-**Copyright © 2002-2006 Giovanni Squillero**
+**Copyright © 2002-2006 Giovanni Squillero.**
 
 MicroGP is free software: you can redistribute it and/or modify it under the terms of the [GNU General Public License](http://www.gnu.org/licenses/) as published by the *Free Software Foundation*, either [version 2](https://opensource.org/licenses/GPL-2.0) of the License, or (at your option) any later version.
