@@ -1,11 +1,11 @@
-MicroGP
-=======
+MicroGP2
+========
 
 [![License: GPL](https://img.shields.io/badge/license-gpl--2.0-green.svg)](/LICENSE.md)
 [![Status: Discontinued](https://img.shields.io/badge/status-discontinued-red.svg)](https://github.com/squillero/microgp3)
 ![Language: C](https://img.shields.io/badge/language-C-blue.svg)
 
-> :warning: The new version is available on https://github.com/squillero/microgp4
+> :warning: A new version is available on https://github.com/squillero/microgp4
 
 MicroGP (ugp2) is an evolutionary tool for generating assembly programs tweaked for a specific microprocessor — hence the Greek letter micro in its name. MicroGP iteratively refines and enhance a set of programs in order to maximize a given metric. It uses the result of an external evaluation, together with some internal information, to efficiently explore the search space (DOI: [10.1007/s10710-005-2985-x](http://dx.doi.org/10.1007/s10710-005-2985-x)).
 
