@@ -3,7 +3,9 @@ MicroGP2
 
 [![License: GPL](https://img.shields.io/badge/license-gpl--2.0-green.svg)](/LICENSE.md)
 [![Status: Discontinued](https://img.shields.io/badge/status-discontinued-red.svg)](https://github.com/squillero/microgp3)
-![Language: C](https://img.shields.io/badge/language-C-blue.svg)
+![Language: C](https://img.shields.io/badge/language-C-purple.svg)
+[![DOI](https://zenodo.org/badge/90843638.svg)](https://zenodo.org/badge/latestdoi/90843638)
+
 
 > :warning: A new version is available on https://github.com/squillero/microgp3
 
